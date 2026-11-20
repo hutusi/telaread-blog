@@ -1,0 +1,152 @@
+import { buildSlugRegistry, getBacklinks } from '@/lib/content/discovery';
+import { isFeatureEnabled } from '@/lib/features';
+import { getAllFlows, getFlowBySlug, getAdjacentFlows } from '@/lib/content/flows';
+import { siteConfig } from '../../../../../../site.config';
+import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { getTranslator } from '@/lib/i18n';
+import FlowCalendarSidebar from '@/components/FlowCalendarSidebar';
+import Tag from '@/components/Tag';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
+import Backlinks from '@/components/Backlinks';
+import ShareBar from '@/components/ShareBar';
+import Comments from '@/components/Comments';
+import { resolveCommentable } from '@/lib/comments';
+import { buildArticleMetadata } from '@/lib/metadata';
+import { withTrailingSlash } from '@/lib/urls';
+import Link from 'next/link';
+import Breadcrumbs from '@/components/Breadcrumbs';
+
+const DEFAULT_LOCALE = siteConfig.i18n.defaultLocale;
+const { t } = getTranslator(DEFAULT_LOCALE);
+
+export function generateStaticParams() {
+  if (!isFeatureEnabled('flow')) return [{ year: '_', month: '_', day: '_' }];
+  const allFlows = getAllFlows();
+  if (allFlows.length === 0) return [{ year: '_', month: '_', day: '_' }];
+  return allFlows.map(flow => {
+    const [year, month, day] = flow.slug.split('/');
+    return { year, month, day };
+  });
+}
+
+export const dynamicParams = false;
+
+export async function generateMetadata({ params }: { params: Promise<{ year: string; month: string; day: string }> }): Promise<Metadata> {
+  const { year, month, day } = await params;
+  const flow = getFlowBySlug(`${year}/${month}/${day}`);
+  if (!flow) return { title: 'Not Found' };
+  const siteUrl = siteConfig.baseUrl.replace(/\/+$/, '');
+  const canonicalUrl = withTrailingSlash(`${siteUrl}/flows/${year}/${month}/${day}`);
+  return buildArticleMetadata({
+    locale: DEFAULT_LOCALE,
+    title: flow.title,
+    description: flow.excerpt,
+    publishedTime: flow.date,
+    url: canonicalUrl,
+    canonicalUrl,
+    twitterCard: 'summary',
+  });
+}
+
+export default async function FlowPage({ params }: { params: Promise<{ year: string; month: string; day: string }> }) {
+  if (!isFeatureEnabled('flow')) notFound();
+  const { year, month, day } = await params;
+  const slug = `${year}/${month}/${day}`;
+  const flow = getFlowBySlug(slug);
+  if (!flow) notFound();
+
+  const allFlows = getAllFlows();
+  const entryDates = allFlows.map(f => f.date);
+  const { prev, next } = getAdjacentFlows(flow.slug);
+  const slugRegistry = buildSlugRegistry();
+  const backlinks = getBacklinks(flow.slug);
+  const flowUrl = `${siteConfig.baseUrl}/flows/${year}/${month}/${day}`;
+
+  const trail = [
+    { label: t('all_flows'), href: '/flows' },
+    { label: year, href: `/flows/${year}` },
+    { label: month, href: `/flows/${year}/${month}` },
+    { label: day },
+  ];
+
+  return (
+    <div className="layout-main">
+      <div className="flex gap-10">
+        <FlowCalendarSidebar
+          entryDates={entryDates}
+          currentDate={flow.date}
+          breadcrumb={<Breadcrumbs items={trail} locale={DEFAULT_LOCALE} />}
+        />
+
+        <article className="flex-1 min-w-0">
+          {/* The calendar sidebar (and its trail) is desktop-only. */}
+          <Breadcrumbs items={trail} locale={DEFAULT_LOCALE} className="mb-6 lg:hidden" />
+          {/* Header */}
+          <header data-pagefind-body data-pagefind-filter="type:Flow" className="mb-8">
+            <time className="text-base font-mono text-accent" dateTime={flow.date} data-pagefind-meta="date[datetime]">{flow.date}</time>
+            {flow.title !== flow.date && (
+              <h1 data-pagefind-meta="title" className="mt-2 text-xl sm:text-2xl font-serif font-bold text-heading">{flow.title}</h1>
+            )}
+            {flow.tags.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {flow.tags.map(tag => (
+                  <Tag key={tag} tag={tag} variant="default" />
+                ))}
+              </div>
+            )}
+          </header>
+
+          {/* Content */}
+          <div data-pagefind-body className="prose prose-lg dark:prose-invert max-w-none">
+            <MarkdownRenderer content={flow.content} slug={`flows/${year}/${month}/${day}`} slugRegistry={slugRegistry} />
+          </div>
+
+          <Backlinks backlinks={backlinks} locale={DEFAULT_LOCALE} />
+
+          <ShareBar url={flowUrl} title={flow.title} className="mt-8 mb-2" />
+
+          {resolveCommentable(flow.commentable, 'flows') && (
+            <Comments slug={`flows/${slug}`} postUrl={flowUrl} />
+          )}
+
+          {/* Prev/Next navigation */}
+          <nav aria-label={t('post_navigation')} className="mt-12 pt-12 border-t border-line grid grid-cols-2 gap-4 print:hidden">
+            {prev ? (
+              <Link
+                href={`/flows/${prev.slug}`}
+                className="group text-left no-underline"
+              >
+                <span className="text-xs text-muted">{t('older')}</span>
+                <div className="text-sm font-mono text-heading group-hover:text-accent transition-colors">
+                  {prev.date}
+                </div>
+                {prev.title !== prev.date && (
+                  <div className="text-sm text-muted group-hover:text-accent/80 transition-colors truncate">
+                    {prev.title}
+                  </div>
+                )}
+              </Link>
+            ) : <div />}
+            {next ? (
+              <Link
+                href={`/flows/${next.slug}`}
+                className="group text-right no-underline"
+              >
+                <span className="text-xs text-muted">{t('newer')}</span>
+                <div className="text-sm font-mono text-heading group-hover:text-accent transition-colors">
+                  {next.date}
+                </div>
+                {next.title !== next.date && (
+                  <div className="text-sm text-muted group-hover:text-accent/80 transition-colors truncate">
+                    {next.title}
+                  </div>
+                )}
+              </Link>
+            ) : <div />}
+          </nav>
+        </article>
+      </div>
+    </div>
+  );
+}

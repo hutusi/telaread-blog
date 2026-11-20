@@ -1,0 +1,221 @@
+import { createHash } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import * as pagefind from 'pagefind';
+
+interface PagefindManifest {
+  version: string;
+  sitePath: string;
+  outputPath: string;
+  files: Record<string, string>;
+}
+
+const PAGEFIND_MANIFEST_VERSION = '1';
+const pagefindCacheDir = path.join(process.cwd(), '.cache', 'pagefind');
+
+function parseArgs(argv: string[]): { sitePath: string; outputPath: string } {
+  let sitePath = 'out';
+  let outputPath = path.join('out', 'pagefind');
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--site') {
+      sitePath = argv[++i] ?? sitePath;
+      continue;
+    }
+    if (arg === '--output-path') {
+      outputPath = argv[++i] ?? outputPath;
+      continue;
+    }
+  }
+
+  return { sitePath, outputPath };
+}
+
+function walkHtmlFiles(rootDir: string): string[] {
+  const files: string[] = [];
+
+  const visit = (dir: string) => {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        visit(fullPath);
+        continue;
+      }
+      if (entry.isFile() && entry.name.endsWith('.html')) {
+        files.push(fullPath);
+      }
+    }
+  };
+
+  if (fs.existsSync(rootDir)) {
+    visit(rootDir);
+  }
+
+  return files.sort();
+}
+
+export function collectHtmlFileHashes(sitePath: string): Record<string, string> {
+  const absoluteSitePath = path.resolve(sitePath);
+  const files = walkHtmlFiles(absoluteSitePath);
+  const hashes: Record<string, string> = {};
+
+  for (const filePath of files) {
+    const relativePath = path.relative(absoluteSitePath, filePath).replaceAll(path.sep, '/');
+    const content = fs.readFileSync(filePath);
+    hashes[relativePath] = createHash('sha1').update(content).digest('hex');
+  }
+
+  return hashes;
+}
+
+function getPagefindManifestPath(sitePath: string, outputPath: string): string {
+  const cacheKey = createHash('sha1')
+    .update(`${path.resolve(sitePath)}::${path.resolve(outputPath)}`)
+    .digest('hex');
+  return path.join(pagefindCacheDir, `${cacheKey}.json`);
+}
+
+export function getPagefindManifestPathForTests(sitePath: string, outputPath: string): string {
+  return getPagefindManifestPath(sitePath, outputPath);
+}
+
+function loadManifest(sitePath: string, outputPath: string): PagefindManifest | null {
+  const manifestPath = getPagefindManifestPath(sitePath, outputPath);
+  if (!fs.existsSync(manifestPath)) return null;
+
+  try {
+    return JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as PagefindManifest;
+  } catch {
+    return null;
+  }
+}
+
+function writeManifest(sitePath: string, outputPath: string, files: Record<string, string>): void {
+  const manifestPath = getPagefindManifestPath(sitePath, outputPath);
+  const manifest: PagefindManifest = {
+    version: PAGEFIND_MANIFEST_VERSION,
+    sitePath: path.resolve(sitePath),
+    outputPath: path.resolve(outputPath),
+    files,
+  };
+
+  try {
+    fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest), 'utf8');
+  } catch (error) {
+    console.warn(`[pagefind] Failed to persist manifest at ${manifestPath}:`, error);
+  }
+}
+
+/**
+ * Zero-byte files anywhere in a Pagefind output. A complete index never has
+ * any; empty runtime files (pagefind.js, the worker, the UI bundles) mean a
+ * write was cut short, which leaves a search box whose module import yields
+ * no exports and which silently finds nothing.
+ */
+export function findTruncatedOutputs(outputPath: string): string[] {
+  if (!fs.existsSync(outputPath)) return [];
+  const truncated: string[] = [];
+  const visit = (dir: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) visit(fullPath);
+      else if (entry.isFile() && fs.statSync(fullPath).size === 0) {
+        truncated.push(path.relative(outputPath, fullPath).replaceAll(path.sep, '/'));
+      }
+    }
+  };
+  visit(outputPath);
+  return truncated.sort();
+}
+
+export function shouldSkipPagefindBuild(sitePath: string, outputPath: string, currentFiles: Record<string, string>): boolean {
+  const manifest = loadManifest(sitePath, outputPath);
+  if (!manifest) return false;
+  if (manifest.version !== PAGEFIND_MANIFEST_VERSION) return false;
+  if (manifest.sitePath !== path.resolve(sitePath)) return false;
+  if (manifest.outputPath !== path.resolve(outputPath)) return false;
+  if (!fs.existsSync(outputPath)) return false;
+  // Never trust a damaged output just because the HTML is unchanged.
+  if (findTruncatedOutputs(outputPath).length > 0) return false;
+
+  const previousEntries = Object.entries(manifest.files).sort(([a], [b]) => a.localeCompare(b));
+  const currentEntries = Object.entries(currentFiles).sort(([a], [b]) => a.localeCompare(b));
+  if (previousEntries.length !== currentEntries.length) return false;
+
+  return previousEntries.every(([file, hash], index) => {
+    const [currentFile, currentHash] = currentEntries[index];
+    return file === currentFile && hash === currentHash;
+  });
+}
+
+async function buildPagefind(sitePath: string, outputPath: string): Promise<void> {
+  const currentFiles = collectHtmlFileHashes(sitePath);
+
+  if (shouldSkipPagefindBuild(sitePath, outputPath, currentFiles)) {
+    console.log(`[pagefind] Skipping rebuild; no HTML changes detected for ${sitePath}.`);
+    return;
+  }
+
+  await writePagefindIndex(sitePath, outputPath);
+  // A broken index must never ship silently or be cached as up to date.
+  const truncated = findTruncatedOutputs(outputPath);
+  if (truncated.length > 0) {
+    throw new Error(`Pagefind wrote ${truncated.length} empty file(s) to ${outputPath}: ${truncated.slice(0, 5).join(', ')}`);
+  }
+
+  writeManifest(sitePath, outputPath, currentFiles);
+}
+
+/** Writes an in-memory Pagefind bundle (paths relative to outputPath) synchronously. */
+export function writeIndexFiles(outputPath: string, files: { path: string; content: Uint8Array }[]): void {
+  for (const file of files) {
+    const target = path.join(outputPath, file.path);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, file.content);
+  }
+}
+
+async function writePagefindIndex(sitePath: string, outputPath: string): Promise<void> {
+  fs.rmSync(outputPath, { recursive: true, force: true });
+
+  const { index, errors } = await pagefind.createIndex();
+  if (errors.length > 0 || !index) {
+    throw new Error(`Failed to create Pagefind index: ${errors.join(', ') || 'unknown error'}`);
+  }
+
+  try {
+    const addResult = await index.addDirectory({ path: sitePath });
+    if (addResult.errors.length > 0) {
+      throw new Error(`Failed to index ${sitePath}: ${addResult.errors.join(', ')}`);
+    }
+
+    // Not index.writeFiles(): the backend can answer before its writes land.
+    // Files it reported written (pagefind.js, the worker, the UI bundles)
+    // have been seen empty right after, then filled in moments later, or
+    // never, when the close() below killed the backend first. getFiles()
+    // returns the same bundle in memory; writing it here puts every byte on
+    // disk before the backend is gone.
+    const filesResult = await index.getFiles();
+    if (filesResult.errors.length > 0) {
+      throw new Error(`Failed to build Pagefind output: ${filesResult.errors.join(', ')}`);
+    }
+    writeIndexFiles(outputPath, filesResult.files);
+  } finally {
+    await pagefind.close();
+  }
+}
+
+async function main() {
+  const { sitePath, outputPath } = parseArgs(process.argv.slice(2));
+  await buildPagefind(sitePath, outputPath);
+}
+
+if (import.meta.main) {
+  main().catch((error) => {
+    console.error('[pagefind] Build failed:', error);
+    process.exit(1);
+  });
+}

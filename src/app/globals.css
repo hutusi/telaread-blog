@@ -1,0 +1,1479 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* `dark:` follows the site theme (next-themes puts .dark on <html>), like the
+ * color tokens below. Tailwind's default is the OS setting, which split pages
+ * whose reader picked the other theme: dark:prose-invert gave inline code
+ * white text on the light theme under a dark OS, and near-black on the dark
+ * theme under a light one. The immersive reader's light and sepia themes are
+ * light even on a dark site, so their subtree opts out (its dark theme adds
+ * its own .dark). Screen only, like every dark rule: print is always light. */
+@custom-variant dark {
+  @media screen {
+    &:where(.dark, .dark *):not(:where([data-reader-overlay="true"][data-reading-theme="light"] *, [data-reader-overlay="true"][data-reading-theme="sepia"] *)) {
+      @slot;
+    }
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+:root {
+  /* Warm/Paper-like background for "Elegant" feel */
+  --background: #fafaf9; /* Stone 50 */
+  --foreground: #44403c; /* Stone 700 */
+  --heading: #1c1917; /* Stone 900 */
+  /* Light-mode accents use the 700 shades: accent is the link, date and
+     active-TOC text color, which needs >= 4.5:1 on the paper background
+     (emerald-600 was 3.6:1). */
+  --accent: #047857; /* Emerald 700 */
+  --accent-hover: #065f46; /* Emerald 800 */
+  /* Text on accent fills (badges, active pagination, primary buttons):
+     white on the dark light-mode accents, ink on the bright dark-mode ones
+     (white on emerald-400 was 1.9:1). */
+  --accent-contrast: #ffffff;
+  --muted: #78716c; /* Stone 500 - Improved contrast */
+  --code-fg: #1c1917; /* Stone 900 - High contrast neutral */
+  /* Warm contrast hue for surfaces & hairlines at ultra-low alpha
+     (`muted` is a gray and deadens the warm paper background; use
+     ink/[0.02–0.08] for fills and micro-borders instead). */
+  --ink: #1c1917; /* Stone 900 */
+}
+
+/* Dark tokens apply on screen only, so print always gets the light theme (see the print block at the end) */
+@media screen {
+  .dark {
+    --background: #292524; /* Stone 800 */
+    --foreground: #f5f5f4; /* Stone 100 */
+    --heading: #fafaf9; /* Stone 50 */
+    --accent: #34d399; /* Emerald 400 */
+    --accent-hover: #10b981; /* Emerald 500 */
+    --accent-contrast: #1c1917; /* Stone 900 */
+    --muted: #a8a29e; /* Stone 400 - Good contrast on dark */
+    --code-fg: #e7e5e4; /* Stone 200 - High contrast neutral */
+    --ink: #fafaf9; /* Stone 50 */
+  }
+}
+
+/* Palette Overrides
+   data-palette sits on <html>, next to the `.dark` class next-themes toggles.
+   Dark variants match both `<html data-palette class="dark">` and a `.dark`
+   descendant (the immersive overlay adds its own `.dark` for the dark
+   reading theme); at specificity 0,2,0 they beat both `.dark` and the light
+   palette rule. */
+/* Blue */
+[data-palette="blue"] {
+  --accent: #1d4ed8; /* Blue 700 */
+  --accent-hover: #1e40af;
+}
+@media screen {
+  [data-palette="blue"].dark,
+  [data-palette="blue"] .dark {
+    --accent: #60a5fa; /* Blue 400 */
+    --accent-hover: #3b82f6;
+  }
+}
+
+/* Rose */
+[data-palette="rose"] {
+  --accent: #be123c; /* Rose 700 */
+  --accent-hover: #9f1239;
+}
+@media screen {
+  [data-palette="rose"].dark,
+  [data-palette="rose"] .dark {
+    --accent: #fb7185; /* Rose 400 */
+    --accent-hover: #f43f5e;
+  }
+}
+
+/* Amber */
+[data-palette="amber"] {
+  --accent: #b45309; /* Amber 700 */
+  --accent-hover: #92400e;
+}
+@media screen {
+  [data-palette="amber"].dark,
+  [data-palette="amber"] .dark {
+    --accent: #fbbf24; /* Amber 400 */
+    --accent-hover: #f59e0b;
+  }
+}
+
+/* Wikilink styles */
+.wikilink {
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.wikilink::before,
+.wikilink::after {
+  font-family: var(--font-mono);
+  font-size: 0.72em;
+  opacity: 0.45;
+  vertical-align: 0.08em;
+  transition: opacity 0.15s;
+}
+.wikilink::before { content: '[['; }
+.wikilink::after  { content: ']]'; }
+.wikilink--resolved {
+  color: var(--accent);
+}
+.wikilink--resolved:hover,
+.wikilink--resolved:focus-visible {
+  color: var(--accent-hover);
+  text-decoration: underline;
+  outline: none;
+}
+.wikilink--resolved:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.wikilink--resolved:hover::before,
+.wikilink--resolved:hover::after,
+.wikilink--resolved:focus-visible::before,
+.wikilink--resolved:focus-visible::after {
+  opacity: 0.75;
+}
+.wikilink--broken {
+  color: var(--muted);
+  text-decoration: underline dashed;
+  cursor: default;
+}
+
+/* Shiki dual-theme code blocks (build-time highlighter).
+ * Selectors are scoped to .shiki (added by Shiki itself on every <pre>) rather
+ * than .cb-root .shiki, so highlighting applies in both the MDX path (wrapped
+ * in <div class="cb-root">) and the rST html-path (bare <pre class="shiki">
+ * inserted via dangerouslySetInnerHTML). Only the wrap-toggle rules keep the
+ * .cb-root scope because that state lives on the toolbar button, MDX-only. */
+/* Reset Shiki's per-token background spans to transparent so our line-level
+ * backgrounds (.line.highlighted, .line.diff.add, .line.error, etc.) show
+ * through. Scoped to token spans INSIDE .line — never to .line itself, or
+ * the highlight backgrounds get clobbered (the line wrapper is also a span). */
+.shiki .line > span {
+  background-color: transparent !important;
+}
+
+html:not(.dark) .shiki,
+html:not(.dark) .shiki span {
+  color: var(--shiki-light, var(--foreground));
+}
+
+@media screen {
+  html.dark .shiki,
+  html.dark .shiki span {
+    color: var(--shiki-dark, var(--foreground));
+  }
+}
+
+.shiki {
+  margin: 0;
+  padding: 1.25rem 1.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  tab-size: 4;
+}
+
+.shiki code {
+  display: grid;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  white-space: pre;
+}
+
+.shiki .line {
+  display: block;
+  min-height: 1.6em;
+  padding-inline: 1.5rem;
+  margin-inline: -1.5rem;
+}
+
+/* Line numbers (opt-in via data-line-numbers on <pre>) */
+.shiki[data-line-numbers="true"] code {
+  counter-reset: shiki-line;
+}
+
+.shiki[data-line-numbers="true"] .line::before {
+  counter-increment: shiki-line;
+  content: counter(shiki-line);
+  display: inline-block;
+  width: 2.25rem;
+  margin-right: 1rem;
+  text-align: right;
+  color: var(--muted);
+  opacity: 0.55;
+  user-select: none;
+}
+
+/* Highlighted lines (via {1,3-5} fence meta or :emphasize-lines:).
+ * Tint bumped from 14% so highlighted lines clearly stand out. Spans the full
+ * scroll width thanks to `code { display: grid }` above. */
+.shiki .line.highlighted,
+.shiki .line[data-highlighted-line] {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border-left: 3px solid var(--accent);
+  padding-inline-start: calc(1.5rem - 3px);
+}
+
+@media screen {
+  html.dark .shiki .line.highlighted,
+  html.dark .shiki .line[data-highlighted-line] {
+    background: color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+}
+
+/* Diff fence backgrounds (raw + / - lines) */
+.shiki .line.diff.add {
+  background: color-mix(in srgb, #16a34a 14%, transparent);
+}
+
+.shiki .line.diff.remove {
+  background: color-mix(in srgb, #dc2626 14%, transparent);
+}
+
+@media screen {
+  html.dark .shiki .line.diff.add {
+    background: color-mix(in srgb, #16a34a 22%, transparent);
+  }
+
+  html.dark .shiki .line.diff.remove {
+    background: color-mix(in srgb, #dc2626 22%, transparent);
+  }
+}
+
+/* Notation: error / warning lines (// [!code error] / [!code warning]).
+ * Shared with the existing diff colors but with a left border accent so they
+ * read as line-level annotations rather than block-wide states. */
+.shiki .line.error {
+  background: color-mix(in srgb, #dc2626 12%, transparent);
+  border-left: 3px solid #dc2626;
+  padding-inline-start: calc(1.5rem - 3px);
+}
+
+.shiki .line.warning {
+  background: color-mix(in srgb, #eab308 14%, transparent);
+  border-left: 3px solid #eab308;
+  padding-inline-start: calc(1.5rem - 3px);
+}
+
+@media screen {
+  html.dark .shiki .line.error {
+    background: color-mix(in srgb, #dc2626 20%, transparent);
+  }
+
+  html.dark .shiki .line.warning {
+    background: color-mix(in srgb, #eab308 20%, transparent);
+  }
+}
+
+/* Notation: focus (// [!code focus]).
+ * Non-focused lines fade to make the focused subset stand out; hovering the
+ * <pre> reverts the dim so readers can scan the full block on demand. */
+.shiki.has-focused .line:not(.focused) {
+  opacity: 0.5;
+  filter: blur(1px);
+  transition: opacity 180ms ease, filter 180ms ease;
+}
+
+.shiki.has-focused:hover .line:not(.focused),
+.shiki.has-focused:focus-within .line:not(.focused) {
+  opacity: 1;
+  filter: none;
+}
+
+/* Tabbed code groups (CSS-only — radio + label sibling trick).
+ * Same markup is produced by CodeGroup.tsx (MDX path) and shiki-rst.ts (rST
+ * path), so this single block styles both. Hardcodes selectors for up to 10
+ * tabs — more than enough for code-group use cases. */
+.code-group {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--background) 90%, transparent);
+  overflow: hidden;
+}
+
+.code-group > input[type="radio"] {
+  /* Visually hide but keep keyboard-accessible via arrow keys. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  margin: 0;
+}
+
+.code-group .cg-tablist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 6%, transparent);
+  background: color-mix(in srgb, var(--ink) 2.5%, transparent);
+}
+
+.code-group .cg-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+  user-select: none;
+}
+
+/* Tab icons (inspired by vitepress-plugin-group-icons). The resolver in
+ * src/lib/code-group-icons.ts maps a tab label to an icon key; this CSS
+ * paints the matching icon via ::before. Per-key rules below activate
+ * rendering by setting `content: ''`; if the resolver returns a key for
+ * which no rule exists, no ::before renders (graceful fallback). Icons
+ * use brand-color rounded-square monograms — consistent visual style,
+ * scannable across light and dark themes, no runtime cost. */
+.cg-tab[data-cg-icon]::before {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  flex-shrink: 0;
+}
+
+/* === BEGIN: generated by scripts/generate-code-group-icons.ts — do not hand-edit === */
+.cg-tab[data-cg-icon="npm"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/npm.svg");
+}
+.cg-tab[data-cg-icon="yarn"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/yarn.svg");
+}
+.cg-tab[data-cg-icon="pnpm"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/pnpm.svg");
+}
+.cg-tab[data-cg-icon="bun"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/bun.svg");
+}
+.cg-tab[data-cg-icon="deno"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/deno.svg");
+}
+.cg-tab[data-cg-icon="typescript"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/typescript.svg");
+}
+.cg-tab[data-cg-icon="javascript"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/javascript.svg");
+}
+.cg-tab[data-cg-icon="python"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/python.svg");
+}
+.cg-tab[data-cg-icon="rust"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/rust.svg");
+}
+.cg-tab[data-cg-icon="go"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/go.svg");
+}
+.cg-tab[data-cg-icon="java"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/java.svg");
+}
+.cg-tab[data-cg-icon="ruby"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/ruby.svg");
+}
+.cg-tab[data-cg-icon="php"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/php.svg");
+}
+.cg-tab[data-cg-icon="c"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/c.svg");
+}
+.cg-tab[data-cg-icon="cpp"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/cpp.svg");
+}
+.cg-tab[data-cg-icon="html"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/html.svg");
+}
+.cg-tab[data-cg-icon="css"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/css.svg");
+}
+.cg-tab[data-cg-icon="json"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/json.svg");
+}
+.cg-tab[data-cg-icon="yaml"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/yaml.svg");
+}
+.cg-tab[data-cg-icon="markdown"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/markdown.svg");
+}
+.cg-tab[data-cg-icon="bash"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/bash.svg");
+}
+.cg-tab[data-cg-icon="docker"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/docker.svg");
+}
+.cg-tab[data-cg-icon="vite"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/vite.svg");
+}
+.cg-tab[data-cg-icon="react"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/react.svg");
+}
+.cg-tab[data-cg-icon="vue"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/vue.svg");
+}
+.cg-tab[data-cg-icon="nextjs"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/nextjs.svg");
+}
+.cg-tab[data-cg-icon="node"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/node.svg");
+}
+.cg-tab[data-cg-icon="tailwind"]::before {
+  content: '';
+  background-image: url("../assets/code-group-icons/tailwind.svg");
+}
+/* === END: generated icons === */
+
+
+.code-group .cg-tab:hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+}
+
+/* Keyboard focus sits on the (visually hidden) radio: outline only that
+ * radio's label, not every tab in the group. */
+.code-group > input[data-idx="0"]:focus-visible ~ .cg-tablist .cg-tab[for$="-0"],
+.code-group > input[data-idx="1"]:focus-visible ~ .cg-tablist .cg-tab[for$="-1"],
+.code-group > input[data-idx="2"]:focus-visible ~ .cg-tablist .cg-tab[for$="-2"],
+.code-group > input[data-idx="3"]:focus-visible ~ .cg-tablist .cg-tab[for$="-3"],
+.code-group > input[data-idx="4"]:focus-visible ~ .cg-tablist .cg-tab[for$="-4"],
+.code-group > input[data-idx="5"]:focus-visible ~ .cg-tablist .cg-tab[for$="-5"],
+.code-group > input[data-idx="6"]:focus-visible ~ .cg-tablist .cg-tab[for$="-6"],
+.code-group > input[data-idx="7"]:focus-visible ~ .cg-tablist .cg-tab[for$="-7"],
+.code-group > input[data-idx="8"]:focus-visible ~ .cg-tablist .cg-tab[for$="-8"],
+.code-group > input[data-idx="9"]:focus-visible ~ .cg-tablist .cg-tab[for$="-9"] {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.code-group .cg-panel {
+  display: none;
+}
+
+/* Inside a panel, drop the cb-root's own outer my-6 margin — the code-group
+ * already provides framing. */
+.code-group .cg-panel .cb-root {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Show only the panel whose matching radio is checked. Hardcoded up to 10
+ * tabs; if a code-group ever needs more, extend this list. */
+.code-group > input[data-idx="0"]:checked ~ .cg-panel[data-panel="0"],
+.code-group > input[data-idx="1"]:checked ~ .cg-panel[data-panel="1"],
+.code-group > input[data-idx="2"]:checked ~ .cg-panel[data-panel="2"],
+.code-group > input[data-idx="3"]:checked ~ .cg-panel[data-panel="3"],
+.code-group > input[data-idx="4"]:checked ~ .cg-panel[data-panel="4"],
+.code-group > input[data-idx="5"]:checked ~ .cg-panel[data-panel="5"],
+.code-group > input[data-idx="6"]:checked ~ .cg-panel[data-panel="6"],
+.code-group > input[data-idx="7"]:checked ~ .cg-panel[data-panel="7"],
+.code-group > input[data-idx="8"]:checked ~ .cg-panel[data-panel="8"],
+.code-group > input[data-idx="9"]:checked ~ .cg-panel[data-panel="9"] {
+  display: block;
+}
+
+/* Highlight the active tab's label. The general sibling combinator (~) works
+ * because every input precedes the .cg-tablist in document order. */
+.code-group > input[data-idx="0"]:checked ~ .cg-tablist .cg-tab[for$="-0"],
+.code-group > input[data-idx="1"]:checked ~ .cg-tablist .cg-tab[for$="-1"],
+.code-group > input[data-idx="2"]:checked ~ .cg-tablist .cg-tab[for$="-2"],
+.code-group > input[data-idx="3"]:checked ~ .cg-tablist .cg-tab[for$="-3"],
+.code-group > input[data-idx="4"]:checked ~ .cg-tablist .cg-tab[for$="-4"],
+.code-group > input[data-idx="5"]:checked ~ .cg-tablist .cg-tab[for$="-5"],
+.code-group > input[data-idx="6"]:checked ~ .cg-tablist .cg-tab[for$="-6"],
+.code-group > input[data-idx="7"]:checked ~ .cg-tablist .cg-tab[for$="-7"],
+.code-group > input[data-idx="8"]:checked ~ .cg-tablist .cg-tab[for$="-8"],
+.code-group > input[data-idx="9"]:checked ~ .cg-tablist .cg-tab[for$="-9"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: color-mix(in srgb, var(--background) 100%, transparent);
+}
+
+/* Word-wrap toggle (MDX-only — the toolbar button flips data-wrap on cb-root) */
+.cb-root[data-wrap="true"] .cb-scroll {
+  overflow-x: hidden;
+}
+
+.cb-root[data-wrap="true"] .shiki code,
+.cb-root[data-wrap="true"] .shiki .line {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@layer components {
+  .layout-container {
+    @apply max-w-6xl mx-auto px-6 py-12 md:py-20;
+  }
+
+  .layout-main {
+    @apply max-w-6xl mx-auto px-6 pt-12 md:pt-20 pb-12 md:pb-16;
+  }
+
+  .navbar-container {
+    @apply max-w-6xl mx-auto px-6 h-16 flex items-center justify-between;
+  }
+
+  .page-header {
+    @apply mb-24 text-center max-w-2xl mx-auto;
+  }
+
+  .page-title {
+    @apply text-4xl md:text-5xl font-serif font-bold text-heading mb-6;
+  }
+
+  .page-subtitle {
+    @apply text-lg text-muted font-serif italic leading-relaxed;
+  }
+
+  /* Shared "double weak contrast" card surface — no single strong signal,
+     three whisper-level ones (ultra-low warm fill, top-sheen layer,
+     micro-border) plus an inner top highlight and a seat shadow.
+     `.ink-card` is the bare surface; `.flow-card` adds the flow feed's
+     padding; `.card-base` adds link-card layout + hover chrome. */
+  .ink-card,
+  .flow-card,
+  .card-base {
+    @apply rounded-2xl;
+    background-color: rgb(28 25 23 / 0.02);
+    background-image: linear-gradient(
+      to bottom,
+      rgb(255 255 255 / 0.55),
+      rgb(255 255 255 / 0) 55%
+    );
+    border: 1px solid rgb(28 25 23 / 0.06);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.65),
+      0 1px 2px rgb(28 25 23 / 0.03);
+  }
+  @media screen {
+    .dark .ink-card,
+    .dark .flow-card,
+    .dark .card-base {
+      background-color: rgb(255 255 255 / 0.03);
+      background-image: linear-gradient(
+        to bottom,
+        rgb(255 255 255 / 0.025),
+        rgb(255 255 255 / 0) 55%
+      );
+      border-color: rgb(255 255 255 / 0.07);
+      box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 0.05),
+        0 1px 2px rgb(0 0 0 / 0.2);
+    }
+  }
+
+  .flow-card {
+    @apply p-6 sm:p-8;
+  }
+
+  .card-base {
+    @apply relative overflow-hidden p-8 transition-all hover:border-accent/30;
+  }
+
+  /* Scroll-driven reveal for flow cards — progressive enhancement only:
+     browsers without animation-timeline support (or readers preferring
+     reduced motion) simply see static cards. Longhand properties on
+     purpose: the `animation` shorthand resets animation-timeline to auto. */
+  @keyframes flow-card-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(0.75rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .flow-card {
+        animation-name: flow-card-reveal;
+        animation-timeline: view();
+        animation-range: entry 0% entry 50%; /* fully revealed once half-entered */
+        animation-fill-mode: both;
+        animation-timing-function: ease-out;
+      }
+    }
+  }
+
+  .badge-accent {
+    @apply mb-4 inline-block rounded-full bg-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-accent;
+  }
+
+  /* Hairline divider used inside flex rows (e.g. collapsible section toggles). */
+  .divider-hairline {
+    @apply h-px flex-1 bg-surface-soft;
+  }
+
+  /* Floating dropdown / popover surface. Call sites add their own padding,
+     layout, positioning, and the `animate-slide-down` entrance. */
+  .dropdown-panel {
+    @apply bg-background/95 backdrop-blur-md border border-line rounded-xl shadow-xl;
+  }
+
+  /* Nav menu entries — single definition consumed by NavDropdown/NavAccordion.
+     Desktop panel items, panel footer link, and their mobile accordion
+     counterparts (tighter padding, no nowrap). */
+  .dropdown-item {
+    @apply block px-4 py-2.5 text-sm text-foreground/80 hover:text-accent hover:bg-surface-soft rounded-lg transition-colors no-underline whitespace-nowrap;
+  }
+  .dropdown-item-footer {
+    @apply block px-4 py-2 text-xs font-bold uppercase tracking-widest text-muted hover:text-accent hover:bg-surface-soft rounded-lg transition-colors no-underline;
+  }
+  .nav-accordion-item {
+    @apply block px-3 py-2 text-sm text-foreground/80 hover:text-accent hover:bg-surface-soft rounded-lg no-underline transition-colors;
+  }
+  .nav-accordion-footer {
+    @apply block px-3 py-2 text-xs font-bold uppercase tracking-widest text-muted hover:text-accent hover:bg-surface-soft rounded-lg no-underline transition-colors;
+  }
+
+  .scrollbar-hide-default {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE 10+ */
+  }
+  .scrollbar-hide-default::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Webkit */
+  }
+
+  .scrollbar-hide-default:hover {
+    scrollbar-width: thin;
+  }
+  .scrollbar-hide-default:hover::-webkit-scrollbar {
+    display: block;
+    width: 6px;
+  }
+  .scrollbar-hide-default:hover::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-hide-default:hover::-webkit-scrollbar-thumb {
+    @apply bg-muted/30 rounded-full;
+  }
+
+  .scrollbar-hide {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE 10+ */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Webkit */
+  }
+
+  /* Focus ring for accessibility */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  /* Button styles */
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-xl bg-accent text-accent-contrast font-medium transition-all hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-xl border border-line-strong text-foreground font-medium transition-all hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  /* Typography - Standardized heading styles */
+  .heading-1 {
+    @apply text-4xl md:text-5xl font-serif font-bold text-heading leading-tight;
+  }
+
+  .heading-2 {
+    @apply text-3xl md:text-4xl font-serif font-bold text-heading leading-tight;
+  }
+
+  .heading-3 {
+    @apply text-2xl md:text-3xl font-serif font-bold text-heading leading-snug;
+  }
+
+  .heading-4 {
+    @apply text-xl md:text-2xl font-serif font-bold text-heading leading-snug;
+  }
+
+  /* Consistent transition utility */
+  .transition-default {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  /* Link with consistent hover */
+  .link-hover {
+    @apply text-foreground hover:text-accent transition-colors duration-300;
+  }
+
+  .link-accent {
+    @apply text-accent hover:text-accent-hover transition-colors duration-300;
+  }
+}
+
+/* Animations
+   Entrance keyframes define only their `from` state: the end state is the
+   element's own computed style, so a utility like `opacity-80` survives the
+   animation. Fill mode `both` holds the `from` state during an
+   animation-delay-* wait, so a delayed element doesn't flash visible, vanish,
+   then fade in. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+/* Transform-only entrance for LCP text: the element is painted at full
+   opacity from the first frame (an opacity-0 start delays LCP until the
+   fade completes). */
+@keyframes rise {
+  from {
+    transform: translateY(12px);
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fade-in 0.5s ease-out both;
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.5s ease-out both;
+  }
+
+  .animate-slide-down {
+    animation: slide-down 0.3s ease-out both;
+  }
+
+  .animate-rise {
+    animation: rise 0.5s ease-out both;
+  }
+
+  .animation-delay-100 {
+    animation-delay: 100ms;
+  }
+
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+
+  .animation-delay-400 {
+    animation-delay: 400ms;
+  }
+}
+
+/* Respect the OS "reduce motion" preference: collapse animations/transitions to
+   near-instant and disable smooth scrolling. This covers the custom entrance
+   animations above (fade-in / slide-up / slide-down + animation-delay-*), the
+   navbar smooth-scroll (html { scroll-behavior: smooth }), and every
+   transition-* utility — without per-element opt-in. The flow-card reveal is
+   already gated behind `prefers-reduced-motion: no-preference`, so it stays off
+   here too. WCAG 2.3.3 (Animation from Interactions). */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: -1ms !important; /* skip animation-delay-* so delayed/backwards entrances don't stay hidden */
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-heading: var(--heading);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-muted: var(--muted);
+  --color-ink: var(--ink);
+
+  /* Ink-alpha token scale — the single source of truth for subtle surfaces and
+     hairline borders. Defined as color-mix(var(--ink) …) so they stay
+     theme-aware (--ink flips in .dark) and render identically to the
+     per-utility ink/opacity arbitrary values they replace. Use these
+     instead of hand-typed ink-with-opacity utilities.
+       border-line          subtle borders, hairlines, dividers
+       border-line-strong   stronger borders, button outlines, rings
+       bg-surface-faint     barely-there fills (sidebars, insets)
+       bg-surface-soft      cards, hover fills, code-inline
+       bg-surface-raised    raised / active fills, dots */
+  --color-line:           color-mix(in oklab, var(--ink) 6%,   transparent);
+  --color-line-strong:    color-mix(in oklab, var(--ink) 8.5%, transparent);
+  --color-surface-faint:  color-mix(in oklab, var(--ink) 2%,   transparent);
+  --color-surface-soft:   color-mix(in oklab, var(--ink) 4.5%, transparent);
+  --color-surface-raised: color-mix(in oklab, var(--ink) 10%,  transparent);
+
+  /* Map Typography colors to our variables for consistency */
+  --color-prose-body: var(--foreground);
+  --color-prose-headings: var(--heading);
+  --color-prose-lead: var(--foreground);
+  --color-prose-links: var(--accent);
+  --color-prose-bold: var(--heading);
+  --color-prose-counters: var(--muted);
+  --color-prose-bullets: var(--muted);
+  --color-prose-hr: var(--muted);
+  --color-prose-quotes: var(--foreground);
+  --color-prose-quote-borders: var(--accent);
+  --color-prose-captions: var(--muted);
+  --color-prose-code: var(--code-fg);
+  --color-prose-pre-code: var(--foreground);
+  --color-prose-pre-bg: var(--background);
+  --color-prose-th-borders: var(--muted);
+  --color-prose-td-borders: var(--muted);
+
+  --color-prose-invert-body: var(--foreground);
+  --color-prose-invert-headings: var(--heading);
+  --color-prose-invert-lead: var(--foreground);
+  --color-prose-invert-links: var(--accent);
+  --color-prose-invert-bold: var(--heading);
+  --color-prose-invert-counters: var(--muted);
+  --color-prose-invert-bullets: var(--muted);
+  --color-prose-invert-hr: var(--muted);
+  --color-prose-invert-quotes: var(--foreground);
+  --color-prose-invert-quote-borders: var(--accent);
+  --color-prose-invert-captions: var(--muted);
+  --color-prose-invert-code: var(--code-fg);
+  --color-prose-invert-pre-code: var(--foreground);
+  --color-prose-invert-pre-bg: var(--background);
+  --color-prose-invert-th-borders: var(--muted);
+  --color-prose-invert-td-borders: var(--muted);
+  
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-baskerville), ui-serif, Georgia, serif;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  /* Guard against horizontal overflow on phones with `clip`, not `hidden`:
+     `hidden` (on body and html) made body a scroll container that never
+     scrolls, so every `position: sticky` sidebar scrolled away with the
+     page. `clip` clips without creating a scroll container. */
+  overflow-x: clip;
+  /* Font smoothing for elegance */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Keyboard focus baseline: every focusable element gets a visible accent
+   outline unless a component styles its own focus-visible state (component
+   utilities sit in a later layer and win). Headings that scrollToHeading
+   focuses programmatically (tabindex="-1") are reading targets, not
+   controls, so they don't get a ring. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  :where(h1, h2, h3, h4, h5, h6)[tabindex="-1"]:focus {
+    outline: none;
+  }
+  /* BackToTop parks focus on <main> after scrolling up; a ring around the
+     whole page would read as a glitch. */
+  :where(#main-content)[tabindex="-1"]:focus {
+    outline: none;
+  }
+}
+
+/* Ensure anchor links are not hidden behind the fixed navbar (h-16) with a
+   little breathing room. The single source of the offset: an
+   html { scroll-padding-top } on top of it used to double the gap on
+   #hash jumps. Matches HEADING_OFFSET_PX in src/lib/scroll-utils.ts. */
+[id] {
+  scroll-margin-top: 5rem;
+}
+
+/* Heading permalinks (rehype-heading-anchors): an empty link whose "#" is
+   drawn here, so it never lands in copied text or the search index. Hidden
+   until the heading is hovered or the link has keyboard focus; faint on
+   touch screens, which can't hover. */
+.heading-anchor {
+  display: inline-block;
+  min-width: 1.5rem;
+  margin-inline-start: 0.25em;
+  color: var(--muted);
+  font-weight: 400;
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 150ms ease, color 150ms ease;
+}
+.heading-anchor::before {
+  content: "#";
+}
+h2:hover > .heading-anchor,
+h3:hover > .heading-anchor,
+h4:hover > .heading-anchor,
+.heading-anchor:focus-visible {
+  opacity: 1;
+}
+.heading-anchor:hover {
+  color: var(--accent);
+}
+@media (hover: none) {
+  .heading-anchor {
+    opacity: 0.4;
+  }
+}
+@media print {
+  .heading-anchor {
+    display: none;
+  }
+}
+
+/* Content images the ImageZoom lightbox opens (rehype-zoomable-images). */
+img[data-zoomable="true"] {
+  cursor: zoom-in;
+}
+
+.rst-rendered figure {
+  margin: 2rem 0;
+}
+
+.rst-rendered figure > img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+}
+
+.rst-rendered figcaption {
+  margin-top: 0.75rem;
+  text-align: center;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.rst-rendered aside.admonition {
+  margin: 2rem 0;
+  border-left: 4px solid var(--accent);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: color-mix(in srgb, var(--accent) 8%, var(--background));
+}
+
+.rst-rendered aside.admonition > :first-child {
+  margin-top: 0;
+}
+
+.rst-rendered aside.admonition > :last-child {
+  margin-bottom: 0;
+}
+
+.rst-rendered .admonition-title {
+  margin-bottom: 0.5rem;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--heading);
+}
+
+/* GitHub-flavored alerts (Markdown / MDX) + matching rST admonitions.
+ * One per-type accent variable drives both border, title color, and tinted
+ * background, so MDX `> [!NOTE]` and rST `.. note::` look visually identical.
+ * Colors track GitHub Primer's alert palette adapted to amytis CSS variables. */
+.alert {
+  --alert-accent: var(--accent);
+
+  margin: 2rem 0;
+  border-left: 4px solid var(--alert-accent);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: color-mix(in srgb, var(--alert-accent) 8%, var(--background));
+}
+
+.alert > .alert-body > :first-child {
+  margin-top: 0;
+}
+
+.alert > .alert-body > :last-child {
+  margin-bottom: 0;
+}
+
+.alert .alert-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--alert-accent);
+}
+
+.alert .alert-title svg {
+  flex: none;
+}
+
+/* Per-type accent assignments. The same variables apply to rST admonitions
+ * below so the two pipelines render with matching colors. */
+.alert-note,
+.rst-rendered aside.admonition-note {
+  --alert-accent: #0969da;
+}
+
+.alert-tip,
+.rst-rendered aside.admonition-tip,
+.rst-rendered aside.admonition-hint {
+  --alert-accent: #1a7f37;
+}
+
+.alert-important,
+.rst-rendered aside.admonition-important {
+  --alert-accent: #8250df;
+}
+
+.alert-warning,
+.rst-rendered aside.admonition-warning,
+.rst-rendered aside.admonition-attention {
+  --alert-accent: #9a6700;
+}
+
+.alert-caution,
+.rst-rendered aside.admonition-caution,
+.rst-rendered aside.admonition-danger {
+  --alert-accent: #cf222e;
+}
+
+/* Dark-mode tweaks: GitHub Primer's dark-tier alert accents are brighter so
+ * they read against the dark background instead of disappearing. */
+@media screen {
+  html.dark .alert-note,
+  html.dark .rst-rendered aside.admonition-note {
+    --alert-accent: #58a6ff;
+  }
+
+  html.dark .alert-tip,
+  html.dark .rst-rendered aside.admonition-tip,
+  html.dark .rst-rendered aside.admonition-hint {
+    --alert-accent: #3fb950;
+  }
+
+  html.dark .alert-important,
+  html.dark .rst-rendered aside.admonition-important {
+    --alert-accent: #a371f7;
+  }
+
+  html.dark .alert-warning,
+  html.dark .rst-rendered aside.admonition-warning,
+  html.dark .rst-rendered aside.admonition-attention {
+    --alert-accent: #d29922;
+  }
+
+  html.dark .alert-caution,
+  html.dark .rst-rendered aside.admonition-caution,
+  html.dark .rst-rendered aside.admonition-danger {
+    --alert-accent: #f85149;
+  }
+}
+
+/* rST admonitions: pick up the per-type accent via the same variable the MDX
+ * alerts use, so the existing rule (border-left, background) recolors itself. */
+.rst-rendered aside.admonition {
+  --alert-accent: var(--accent);
+
+  border-left-color: var(--alert-accent);
+  background: color-mix(in srgb, var(--alert-accent) 8%, var(--background));
+}
+
+.rst-rendered aside.admonition .admonition-title {
+  color: var(--alert-accent);
+}
+
+.rst-rendered .docutils.literal {
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  border-radius: 0.375rem;
+  background: color-mix(in srgb, var(--ink) 6%, var(--background));
+  padding: 0.1rem 0.35rem;
+  font-size: 0.9em;
+  color: var(--heading);
+}
+
+.rst-rendered .dtag {
+  display: inline-block;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--background));
+  padding: 0.1rem 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.rst-rendered a[href]:not([role="doc-noteref"]):not(.heading-anchor) {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 160ms ease, text-decoration-color 160ms ease;
+}
+
+.rst-rendered a[href]:not([role="doc-noteref"]):not(.heading-anchor):hover,
+.rst-rendered a[href]:not([role="doc-noteref"]):not(.heading-anchor):focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.rst-rendered .numref {
+  color: inherit;
+  font-weight: inherit;
+}
+
+.rst-rendered .rst-table-wrapper {
+  overflow-x: auto;
+  margin: 2rem 0;
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  border-radius: 0.5rem;
+}
+
+.rst-rendered .rst-table-wrapper > table {
+  min-width: 100%;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.rst-rendered math {
+  display: inline-block;
+  max-width: 100%;
+  overflow-x: auto;
+  vertical-align: middle;
+}
+
+/* Wide display formulas (e.g. large matrices) must not be clipped by the
+ * prose root's overflow-x-hidden: each block becomes its own quiet
+ * horizontal scroll region. Normal-width formulas are unaffected — the
+ * scrollbar only appears when the formula is wider than the column.
+ * (rST math already does this via `.rst-rendered math` above.)
+ * The vertical padding keeps superscripts/descenders clear of the scroll
+ * container's edge so they aren't cut when a scrollbar engages. */
+.katex-display {
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  padding: 0.25rem 0;
+}
+
+/* Shrink-wrap the formula so the scroll container sizes to it. KaTeX's own
+ * stylesheet makes this a centered BLOCK — a centered line wider than the
+ * column overflows BOTH edges, and a scroll container can only reach the
+ * inline-end side, leaving the formula's left edge unreachable. As an
+ * inline-block it starts at the left content edge and overflows right
+ * only — fully scrollable; narrower formulas are still centered by the
+ * parent's text-align. The doubled .katex class bumps specificity above
+ * KaTeX's vendor rule, which can load after this stylesheet. */
+.katex-display > .katex.katex {
+  display: inline-block;
+  text-align: initial;
+}
+
+/* Tailwind Typography zeros padding on first/last table cells so unframed
+ * tables align with surrounding paragraph text. Our `MarkdownRenderer` wraps
+ * every table in a bordered container, which makes that zero-padding push
+ * content flush against the border. Restore symmetric horizontal padding
+ * on every cell so framed tables breathe inside their wrapper.
+ *
+ * Selector deliberately avoids the plugin's
+ * `.prose :where(...):not(:where(.not-prose, .not-prose *))` shape:
+ * Tailwind v4 / Lightning CSS silently strips user rules that match that
+ * pattern from the compiled bundle (verified by inspecting the built CSS).
+ * Bare descendant selectors survive compilation and have specificity
+ * (0,1,2), beating the plugin's (0,1,0) first/last-child rules
+ * regardless of source order. */
+.prose thead th, .prose tbody td, .prose tfoot td {
+  padding-inline: 0.75rem;
+}
+
+/* Browser-default <summary> looks like an unstyled heading — readers miss
+ * that it's interactive. Color it like a link (accent + pointer + hover
+ * underline) so it carries the same affordance as other clickable text in
+ * prose. The native disclosure marker stays — it's the redundant visual
+ * cue that confirms "this expands." Same selector shape as the cell-padding
+ * override above and for the same reason. */
+.prose summary {
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.prose summary:hover {
+  text-decoration: underline;
+}
+
+.rst-rendered a[role="doc-noteref"] {
+  font-size: 0.82em;
+  vertical-align: super;
+}
+
+.rst-rendered .footnote-list {
+  margin: 1.5rem 0 2rem;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  padding-top: 1rem;
+}
+
+.rst-rendered .footnote {
+  margin: 0.75rem 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.rst-rendered .footnote .label {
+  margin-right: 0.4rem;
+  font-weight: 600;
+  color: var(--heading);
+}
+
+/* Immersive reading mode.
+ * Toggled by ImmersiveReadingProvider via the html element's data-immersive
+ * attribute. The fullscreen ImmersiveReader overlay also covers the site
+ * chrome, but these rules are kept as defense-in-depth (and reset the
+ * navbar offset so the scroll padding doesn't peek through the overlay).
+ * Do not strip the data-site-nav / data-site-footer / data-reading-progress
+ * hooks.
+ *
+ * IMPORTANT: every attribute selector below uses an explicit ="true" value,
+ * and no rule starts with `html[...]`. Tailwind v4 / Lightning CSS silently
+ * dead-code-eliminates rules that start with `html[...]` and bare attribute
+ * selectors like `[data-site-nav]` — they end up missing from the compiled
+ * CSS bundle even though they're written here in source. The surviving
+ * patterns are bare-attribute-with-value (e.g. `[data-palette="blue"]`,
+ * `[data-line-numbers="true"]`) and compounds/descendants of them (e.g.
+ * `[data-palette="blue"].dark`). React serialises a bare JSX
+ * `data-site-nav` prop to the HTML `data-site-nav="true"`, so writing
+ * `="true"` here costs nothing on the component side. */
+[data-immersive="true"] [data-site-nav="true"],
+[data-immersive="true"] [data-site-footer="true"],
+[data-immersive="true"] [data-reading-progress="true"],
+[data-immersive="true"] [data-back-to-top="true"] {
+  display: none;
+}
+[data-immersive="true"] #main-content {
+  padding-top: 0;
+}
+
+/* Font-size in the reader overlay is driven by a CSS var set inline on the
+ * overlay container. A var (not stacked text-* classes) sidesteps fighting
+ * the prose-lg specificity. */
+[data-reader-overlay="true"] .prose {
+  font-size: var(--reading-font-size, 1.125rem);
+}
+
+/* Reading-theme overrides — scoped to the overlay so they compose with the
+ * site's light/dark theme without leaking outside. 'auto' inherits the site
+ * theme (no override needed); 'light' / 'dark' / 'sepia' set their own
+ * variables. The overlay also adds Tailwind's `.dark` class on its container
+ * when readingTheme === 'dark' so `dark:prose-invert` activates regardless of
+ * the site theme. Shiki code blocks keep their own theme on purpose. */
+[data-reader-overlay="true"][data-reading-theme="light"] {
+  --background: #fafaf9;
+  --foreground: #44403c;
+  --heading: #1c1917;
+  --muted: #78716c;
+  /* Light surfaces need the light-mode accent even on a dark site, which
+     would otherwise leak dark mode's bright 400 accent in (~1.8:1). */
+  --accent: #047857;
+  --accent-hover: #065f46;
+  --accent-contrast: #ffffff;
+}
+@media screen {
+  [data-reader-overlay="true"][data-reading-theme="dark"] {
+    --background: #292524;
+    --foreground: #f5f5f4;
+    --heading: #fafaf9;
+    --muted: #a8a29e;
+  }
+}
+[data-reader-overlay="true"][data-reading-theme="sepia"] {
+  --background: #f4ecd8;
+  --foreground: #5b4636;
+  --heading: #3b2f24;
+  --muted: #8a7a66;
+  --accent: #047857;
+  --accent-hover: #065f46;
+  --accent-contrast: #ffffff;
+}
+/* Palette accents for the light and sepia readers (the dark reader is
+   covered by the palettes' `.dark` descendant rules). Sepia's warmer
+   background needs amber-800 for 4.5:1. */
+[data-palette="blue"] [data-reader-overlay="true"][data-reading-theme="light"] {
+  --accent: #1d4ed8;
+  --accent-hover: #1e40af;
+}
+[data-palette="blue"] [data-reader-overlay="true"][data-reading-theme="sepia"] {
+  --accent: #1d4ed8;
+  --accent-hover: #1e40af;
+}
+[data-palette="rose"] [data-reader-overlay="true"][data-reading-theme="light"] {
+  --accent: #be123c;
+  --accent-hover: #9f1239;
+}
+[data-palette="rose"] [data-reader-overlay="true"][data-reading-theme="sepia"] {
+  --accent: #be123c;
+  --accent-hover: #9f1239;
+}
+[data-palette="amber"] [data-reader-overlay="true"][data-reading-theme="light"] {
+  --accent: #b45309;
+  --accent-hover: #92400e;
+}
+[data-palette="amber"] [data-reader-overlay="true"][data-reading-theme="sepia"] {
+  --accent: #92400e;
+  --accent-hover: #78350f;
+}
+[data-reader-overlay="true"][data-reading-theme="sepia"] .prose h1,
+[data-reader-overlay="true"][data-reading-theme="sepia"] .prose h2,
+[data-reader-overlay="true"][data-reading-theme="sepia"] .prose h3,
+[data-reader-overlay="true"][data-reading-theme="sepia"] .prose h4,
+[data-reader-overlay="true"][data-reading-theme="sepia"] .prose h5,
+[data-reader-overlay="true"][data-reading-theme="sepia"] .prose h6 {
+  color: var(--heading);
+}
+
+/* ── Print ──────────────────────────────────────────────────────────────────
+ * Paper always gets the light theme: every dark-only rule above sits in
+ * `@media screen`, and so does the `dark:` variant (both guarded by
+ * tests/tooling/print-css.test.ts). Site chrome carries `print:hidden` on its
+ * root; this block hides the chrome hooks, lets the immersive reader flow
+ * onto pages, and sets code and links for paper. */
+@media print {
+  :root {
+    /* next-themes writes an inline `color-scheme: dark` on <html>. */
+    color-scheme: light !important;
+  }
+
+  @page {
+    margin: 16mm 14mm;
+  }
+
+  /* Scroll-driven reveals would leave the flow cards below the fold at
+     opacity 0, and color transitions would print mid-fade. */
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* The immersive reader locks <body> and the lightbox <html> inline;
+     either would clip printing to one screen. */
+  html,
+  body {
+    overflow: visible !important;
+  }
+
+  [data-site-nav="true"],
+  [data-site-footer="true"],
+  [data-reading-progress="true"] {
+    display: none !important;
+  }
+
+  #main-content {
+    padding-top: 0 !important;
+  }
+
+  /* Code: light-theme tokens, wrapped instead of scrolled, nothing dimmed. */
+  .shiki,
+  .shiki span {
+    color: var(--shiki-light, var(--foreground)) !important;
+  }
+  .shiki code,
+  .shiki .line {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .shiki.has-focused .line:not(.focused) {
+    opacity: 1;
+    filter: none;
+  }
+  .cb-scroll,
+  .prose .overflow-x-auto,
+  .rst-table-wrapper,
+  .katex-display {
+    overflow: visible !important;
+  }
+
+  /* External links print where they go (data-print-url, src/lib/print-urls.ts). */
+  [data-print-url="true"]::after {
+    content: " (" attr(href) ")";
+    color: var(--muted);
+    font-size: 0.85em;
+    overflow-wrap: anywhere;
+  }
+
+  h2,
+  h3,
+  h4 {
+    break-after: avoid;
+  }
+  figure,
+  img,
+  pre,
+  table,
+  blockquote {
+    break-inside: avoid;
+  }
+}
