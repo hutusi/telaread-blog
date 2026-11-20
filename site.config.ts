@@ -26,9 +26,9 @@ const postsBasePath = 'posts'; // Change to e.g. 'articles' to serve all posts a
 
 // Defined up-front so footer.connect can reference these URLs without duplication
 const social = {
-  github: "https://github.com/your-username",
-  twitter: "https://twitter.com/your-username",
-  email: "mailto:you@example.com",
+  github: "https://github.com/hutusi",
+  twitter: "https://twitter.com/hutusi",
+  email: "mailto:me@hutu.si",
 };
 
 export const siteConfig = {
@@ -43,13 +43,13 @@ export const siteConfig = {
     favicon: "/icon.svg",
   },
   description: "official blog of telaread.com",
-  baseUrl: "https://example.com", // Replace with your actual domain
+  baseUrl: "https://blog.telaread.com", // Replace with your actual domain
   ogImage: "/og-image.png", // Default OG/social preview image (1200×630 PNG). A default ships in public/ — replace it with your own; a missing site-relative file fails the build
   // Render a 1200×630 share card (title, series or book, date) for every post, note and book chapter without a cover image of its own; pages with a cover keep sharing it. See docs/ARCHITECTURE.md "Share Cards".
   generateOgImages: false,
   // After each build, report broken internal links, missing images and broken wikilinks in the export. 'error' fails the build on broken links and images; 'off' skips the check. See docs/ARCHITECTURE.md "Build Pipeline".
   linkCheck: 'warn' as 'warn' | 'error' | 'off',
-  footerText: `© ${new Date().getFullYear()} TelaRead Blog. All rights reserved.`,
+  footerText: `© ${new Date().getFullYear()} telaread.com. All rights reserved.`,
 
   // ── i18n ──────────────────────────────────────────────────────────────────
   i18n: {
@@ -63,22 +63,16 @@ export const siteConfig = {
     // default locale's content stays at the content/ root, unprefixed.
     // Locale codes become reserved URL segments while i18n is enabled.
     enabled: false,
-    defaultLocale: 'en',
-    locales: ['en'],
+    defaultLocale: 'zh',
+    locales: ['zh'],
   },
 
   // ── Navigation ────────────────────────────────────────────────────────────
   nav: [
     { name: "Posts", url: `/${postsBasePath}`, weight: 1 },
-    { name: "Series", url: "/series", weight: 2 },
-    { name: "About", url: "/about", weight: 3 },
-    { name: "More", url: "", weight: 4, children: [
-      { name: "Notes", url: "/notes" },   // hidden while features.flow is disabled
-      { name: "Graph", url: "/graph" },   // hidden while features.flow is disabled
-      { name: "Archive", url: "/archive", dividerBefore: true },
-      { name: "Tags", url: "/tags" },
-      { name: "Subscribe", url: "/subscribe", dividerBefore: true },
-    ]},
+    { name: "Archive", url: "/archive", weight: 3 },
+    { name: "Tags", url: "/tags", weight: 4 },
+    { name: "Subscribe", url: "/subscribe", weight: 5 },
   ] as NavItem[],
 
   // ── Footer ────────────────────────────────────────────────────────────────
@@ -115,39 +109,39 @@ export const siteConfig = {
   },
   subscribe: {
     substack: '',       // Substack publication URL, e.g., 'https://yourname.substack.com'
-    telegram: '',       // Telegram channel URL, e.g., 'https://t.me/yourchannel'
+    telegram: 'hutusi',       // Telegram channel URL, e.g., 'https://t.me/yourchannel'
     wechat: {
       qrCode: '',       // Path to QR image in public/, e.g., '/images/wechat-qr.png'
       account: '',      // WeChat official account ID/name shown below QR
     },
-    email: '',          // Newsletter/mailing list URL (distinct from social.email contact address)
+    email: 'me@hutu.si',          // Newsletter/mailing list URL (distinct from social.email contact address)
   },
 
   // ── Features ──────────────────────────────────────────────────────────────
   features: {
     posts: {
       enabled: true,
-      name: "Articles",
+      name: { en: "Blog", zh: "博客" },
     },
     series: {
-      enabled: true,
-      name: "Series",
+      enabled: false,
+      name: { en: "Series", zh: "系列" },
     },
     books: {
       enabled: false,
-      name: "Books",
+      name: { en: "Books", zh: "书籍" },
     },
     flow: {
       enabled: false,
-      name: "Flow",
+      name: { en: "Flow", zh: "随笔" },
     },
   },
 
   // ── Homepage ──────────────────────────────────────────────────────────────
   hero: {
-    tagline: "My Personal Digital Garden",
-    title: "A place for ideas to grow",
-    subtitle: "Notes, articles, and explorations — written for curiosity, shared for connection.",
+    tagline: "Official blog of telaread.com",
+    title: "灵感源于汇流",
+    subtitle: "为独立网络而做的阅读器",
   },
   homepage: {
     sections: [
@@ -155,7 +149,7 @@ export const siteConfig = {
       { id: 'featured-posts',  enabled: true, weight: 2, maxItems: 4, order: 'shuffle' as 'shuffle' | 'date-desc' | 'date-asc' },
       { id: 'latest-posts',    enabled: true, weight: 3, maxItems: 3 },
       { id: 'recent-flows',    enabled: false, weight: 4, maxItems: 8 },
-      { id: 'featured-series', enabled: true, weight: 5, maxItems: 6, order: 'shuffle' as 'shuffle' | 'date-desc' | 'date-asc' },
+      { id: 'featured-series', enabled: false, weight: 5, maxItems: 6, order: 'shuffle' as 'shuffle' | 'date-desc' | 'date-asc' },
       { id: 'featured-books',  enabled: false, weight: 6, maxItems: 4, order: 'shuffle' as 'shuffle' | 'date-desc' | 'date-asc' },
     ],
   },
@@ -176,15 +170,15 @@ export const siteConfig = {
     authors: {
       // Default author names applied when a post has no author in its frontmatter.
       // Falls back to series authors first, then to this list.
-      default: ["Your Name"] as string[],
+      default: ["hutusi"] as string[],
       showInHeader: true,   // Show author byline below the post title
-      showAuthorCard: true, // Show author bio card at the end of the post
+      showAuthorCard: false, // Show author bio card at the end of the post
     },
     // Series slugs whose posts are hidden from the main posts listing.
     // Posts remain accessible via their series page and direct URLs.
     excludeFromListing: [] as string[],
     archive: {
-      showAuthors: true,
+      showAuthors: false,
     },
   },
   series: {
@@ -202,7 +196,7 @@ export const siteConfig = {
   },
 
   feed: {
-    maxItems: 20,                                           // Max items per feed (0 = no limit)
+    maxItems: 100,                                           // Max items per feed (0 = no limit)
     format: 'rss' as 'rss' | 'atom' | 'both',              // Format(s) to serve and advertise
     content: 'full' as 'excerpt' | 'full',                  // Full post content or excerpt only
     includeFlows: false,                                    // Include flow notes alongside posts
@@ -277,7 +271,7 @@ export const siteConfig = {
     //     { image: "/images/authors/wechat-qr.jpg", description: "WeChat Official Account" },
     //   ],
     // },
-    "Your Name": {
+    "hutusi": {
       bio: "Write a short bio here.",
       avatar: "/images/avatar.jpg",
       social: [],
