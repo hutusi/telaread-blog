@@ -38,7 +38,7 @@ export const siteConfig = {
   logo: {
     // Path to navbar logo image served from public/ (leave empty for the default built-in icon)
     // Accepts SVG, PNG, etc. — e.g. "/logo.svg" or "/images/my-logo.png"
-    src: "",
+    src: "/logo.svg",
     // Path to favicon served from public/ (defaults to /icon.svg)
     favicon: "/icon.svg",
   },
