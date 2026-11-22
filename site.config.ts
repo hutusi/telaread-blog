@@ -97,8 +97,8 @@ export const siteConfig = {
       { name: "About", url: "/about", weight: 3 },
     ],
     connect: [
-      { name: "GitHub", url: social.github, weight: 1 },
-      { name: "X (Twitter)", url: social.twitter, weight: 2 },
+      // { name: "GitHub", url: social.github, weight: 1 },
+      // { name: "X (Twitter)", url: social.twitter, weight: 2 },
       { name: "RSS Feed", url: "/feed.xml", weight: 3, external: true },
       { name: "Subscribe", url: "/subscribe", weight: 4 },
     ],
@@ -137,7 +137,7 @@ export const siteConfig = {
   // Connect column links to https://telaread.com/@yourname with rel="me", which
   // is how you claim this site on Tela. Leave empty for no link.
   telaread: {
-    username: '',
+    username: 'hutusi',
   },
 
   // ── Features ──────────────────────────────────────────────────────────────
